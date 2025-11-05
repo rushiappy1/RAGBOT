@@ -1,0 +1,40 @@
+# Virtual environments
+.RAGBOT/
+venv/
+env/
+ENV/
+*.venv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model cache (sentence-transformers downloads)
+~/.cache/
+.cache/
+
+# Large binary artifacts (regenerate as needed)
+data/bm25_index.pkl
+data/faiss_index.bin
+data/chunk_metadata.json
+
+# Logs
+*.log
