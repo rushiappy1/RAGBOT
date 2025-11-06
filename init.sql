@@ -1,23 +1,27 @@
+-- Enable pgvector
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE IF NOT EXISTS policy_docs (
-    id SERIAL PRIMARY KEY,
-    insurer TEXT NOT NULL,
-    product TEXT NOT NULL,
-    policy_name TEXT NOT NULL,
-    doc_md TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+-- Chunks table
+CREATE TABLE IF NOT EXISTS chunks (
+    id BIGSERIAL PRIMARY KEY,
+    doc_id VARCHAR(100) NOT NULL,
+    chunk_id VARCHAR(200) UNIQUE NOT NULL,
+    text TEXT NOT NULL,
+    approx_tokens INT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS policy_chunks (
-    id SERIAL PRIMARY KEY,
-    policy_id INT REFERENCES policy_docs(id) ON DELETE CASCADE,
-    chunk_text TEXT NOT NULL,
-    embedding vector(1536), -- adjust later based on model used
-    section TEXT,
-    clause_ref TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+CREATE INDEX IF NOT EXISTS idx_chunks_doc_id ON chunks(doc_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_chunk_id ON chunks(chunk_id);
+
+-- Embeddings table
+CREATE TABLE IF NOT EXISTS chunk_embeddings (
+    id BIGSERIAL PRIMARY KEY,
+    chunk_id VARCHAR(200) UNIQUE NOT NULL REFERENCES chunks(chunk_id) ON DELETE CASCADE,
+    embedding vector(384),
+    embedding_model VARCHAR(100) DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX ON policy_chunks USING ivfflat (embedding vector_cosine_ops);
-
+CREATE INDEX IF NOT EXISTS idx_chunk_embedding_cosine ON chunk_embeddings USING ivfflat (embedding vector_cosine_ops);
