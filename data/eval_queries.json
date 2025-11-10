@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ncb_2_years",
+    "query": "What is the No Claim Bonus for 2 consecutive claim-free years?",
+    "gold_chunks": ["SBI_General_Motor::chunk-44", "Reliance_General_Motor::chunk-33", "ICICI_Lombard_Motor::chunk-41"],
+    "expected_answer": "25%"
+  },
+  {
+    "id": "ncb_5_years",
+    "query": "What is the NCB for 5 consecutive claim-free years?",
+    "gold_chunks": ["SBI_General_Motor::chunk-44", "Reliance_General_Motor::chunk-33"],
+    "expected_answer": "50%"
+  },
+  {
+    "id": "personal_accident_cover",
+    "query": "What is covered under Personal Accident Cover?",
+    "gold_chunks": ["HDFC_ERGO_Motor::chunk-1", "Reliance_General_Motor::chunk-37"],
+    "expected_answer": "Death and permanent total disability"
+  },
+  {
+    "id": "policy_transfer",
+    "query": "Can I transfer my insurance policy if I sell the vehicle?",
+    "gold_chunks": ["HDFC_ERGO_Motor::chunk-14", "HDFC_ERGO_Motor::chunk-5"],
+    "expected_answer": "Yes, requires Form 29/30 and documents"
+  },
+  {
+    "id": "depreciation_rubber",
+    "query": "What is the depreciation rate for rubber parts?",
+    "gold_chunks": ["Reliance_General_Motor::chunk-2", "HDFC_ERGO_Motor::chunk-10"],
+    "expected_answer": "50%"
+  },
+  {
+    "id": "cooling_off_period",
+    "query": "What is the cooling-off period for cancellation?",
+    "gold_chunks": [],
+    "expected_answer": "Not found"
+  },
+  {
+    "id": "idv_calculation",
+    "query": "How is IDV calculated for a vehicle?",
+    "gold_chunks": ["SBI_General_Motor::chunk-5", "HDFC_ERGO_Motor::chunk-3"],
+    "expected_answer": "Manufacturer's listed selling price minus depreciation"
+  },
+  {
+    "id": "third_party_liability",
+    "query": "What is the third party liability coverage limit?",
+    "gold_chunks": ["SBI_General_Motor::chunk-12", "ICICI_Lombard_Motor::chunk-8"],
+    "expected_answer": "As per Motor Vehicles Act"
+  },
+  {
+    "id": "claim_settlement_time",
+    "query": "What is the time limit to file a claim after an accident?",
+    "gold_chunks": ["Reliance_General_Motor::chunk-25", "HDFC_ERGO_Motor::chunk-20"],
+    "expected_answer": "Immediately or as soon as reasonably possible"
+  },
+  {
+    "id": "ncb_retention_90_days",
+    "query": "How long can I retain my NCB without renewing?",
+    "gold_chunks": ["SBI_General_Motor::chunk-44", "Reliance_General_Motor::chunk-33"],
+    "expected_answer": "90 days from policy expiry"
+  }
+]

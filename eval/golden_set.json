@@ -1,0 +1,23 @@
+[
+  {
+    "question": "What is the No Claim Bonus for 2 consecutive claim-free years?",
+    "expected_docs": ["ICICI_Lombard", "HDFC_ERGO"],
+    "expected_answer_type": "comparison",
+    "must_include_citations": true,
+    "must_not_hallucinate": true
+  },
+  {
+    "question": "What is the maximum hospitalization coverage amount?",
+    "expected_docs": ["all"],
+    "expected_answer_type": "numerical",
+    "must_include_citations": true,
+    "must_not_hallucinate": true
+  },
+  {
+    "question": "Are pre-existing conditions covered in year 1?",
+    "expected_docs": ["all"],
+    "expected_answer_type": "yes_no",
+    "must_include_citations": true,
+    "must_not_hallucinate": true
+  }
+]
