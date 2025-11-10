@@ -1,0 +1,122 @@
+[
+  {
+    "query_id": "q1",
+    "query": "What is the No Claim Bonus for 2 consecutive claim-free years?",
+    "bucket": "claims_refunds",
+    "retrieved_chunks": [
+      "HDFC_ERGO_Motor::chunk-14",
+      "ICICI_Lombard_Motor::chunk-285",
+      "SBI_General_Motor::chunk-44",
+      "Reliance_General_Motor::chunk-30",
+      "Reliance_General_Motor::chunk-35"
+    ]
+  },
+  {
+    "query_id": "q2",
+    "query": "What is the minimum age requirement for insuring a private car?",
+    "bucket": "eligibility",
+    "retrieved_chunks": [
+      "ICICI_Lombard_Motor::chunk-13",
+      "HDFC_ERGO_Motor::chunk-26",
+      "Reliance_General_Motor::chunk-221",
+      "Reliance_General_Motor::chunk-184",
+      "ICICI_Lombard_Motor::chunk-12"
+    ]
+  },
+  {
+    "query_id": "q3",
+    "query": "Are add-on covers available with third party only policy?",
+    "bucket": "addons",
+    "retrieved_chunks": [
+      "SBI_General_Motor::chunk-150",
+      "ICICI_Lombard_Motor::chunk-483",
+      "SBI_General_Motor::chunk-149",
+      "ICICI_Lombard_Motor::chunk-410",
+      "ICICI_Lombard_Motor::chunk-352"
+    ]
+  },
+  {
+    "query_id": "q4",
+    "query": "Can a vehicle registered as a private car but used for occasional paid carpooling be insured under a standard private car policy?",
+    "bucket": "eligibility",
+    "retrieved_chunks": [
+      "ICICI_Lombard_Motor::chunk-81",
+      "ICICI_Lombard_Motor::chunk-122",
+      "HDFC_ERGO_Motor::chunk-110",
+      "Reliance_General_Motor::chunk-81",
+      "ICICI_Lombard_Motor::chunk-88"
+    ]
+  },
+  {
+    "query_id": "q5",
+    "query": "If a vehicle suffers engine damage due to water ingress during monsoon but the insured continued to crank the engine, is the loss payable under own damage cover?",
+    "bucket": "coverage",
+    "retrieved_chunks": [
+      "Reliance_General_Motor::chunk-4",
+      "Reliance_General_Motor::chunk-26",
+      "HDFC_ERGO_Motor::chunk-25",
+      "Bajaj_Allianz_Motor::chunk-2",
+      "Reliance_General_Motor::chunk-25"
+    ]
+  },
+  {
+    "query_id": "q6",
+    "query": "Are depreciation charges on replaced rubber/nylon/plastic parts covered if the vehicle is insured with a zero depreciation add-on but the claim is for malicious damage?",
+    "bucket": "exclusions",
+    "retrieved_chunks": [
+      "HDFC_ERGO_Motor::chunk-21",
+      "Bajaj_Allianz_Motor::chunk-3",
+      "HDFC_ERGO_Motor::chunk-20",
+      "Reliance_General_Motor::chunk-2",
+      "ICICI_Lombard_Motor::chunk-4"
+    ]
+  },
+  {
+    "query_id": "q7",
+    "query": "If the insured transfers NCB from another insurer at renewal but the previous policy had lapsed by 120 days, can the NCB percentage be carried forward?",
+    "bucket": "addons",
+    "retrieved_chunks": [
+      "Reliance_General_Motor::chunk-34",
+      "SBI_General_Motor::chunk-49",
+      "SBI_General_Motor::chunk-48",
+      "ICICI_Lombard_Motor::chunk-41",
+      "Reliance_General_Motor::chunk-35"
+    ]
+  },
+  {
+    "query_id": "q8",
+    "query": "Does the policy cover theft of accessories fitted after policy inception if they were not declared but their value is within the IDV margin?",
+    "bucket": "coverage",
+    "retrieved_chunks": [
+      "Reliance_General_Motor::chunk-6",
+      "HDFC_ERGO_Motor::chunk-22",
+      "SBI_General_Motor::chunk-23",
+      "SBI_General_Motor::chunk-38",
+      "HDFC_ERGO_Motor::chunk-23"
+    ]
+  },
+  {
+    "query_id": "q9",
+    "query": "In case of constructive total loss where the repair estimate is 76% of IDV, is the insured entitled to full IDV or repair cost minus deductible?",
+    "bucket": "claims_refunds",
+    "retrieved_chunks": [
+      "HDFC_ERGO_Motor::chunk-26",
+      "Bajaj_Allianz_Motor::chunk-6",
+      "Reliance_General_Motor::chunk-24",
+      "Reliance_General_Motor::chunk-27",
+      "Reliance_General_Motor::chunk-7"
+    ]
+  },
+  {
+    "query_id": "q10",
+    "query": "If the insured dies after filing a claim but before settlement, can the legal heir claim the salvage value separately from the total loss payout?",
+    "bucket": "claims_refunds",
+    "retrieved_chunks": [
+      "Reliance_General_Motor::chunk-27",
+      "Reliance_General_Motor::chunk-23",
+      "Bajaj_Allianz_Motor::chunk-16",
+      "SBI_General_Motor::chunk-44",
+      "Reliance_General_Motor::chunk-26"
+    ]
+  }
+]
