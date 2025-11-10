@@ -1,0 +1,91 @@
+{
+  "aggregate_metrics": {
+    "precision_at_1": 0.5714285714285714,
+    "recall_at_5": 1.0,
+    "mrr": 0.7619047619047619
+  },
+  "per_query_results": [
+    {
+      "query_id": "q1",
+      "query": "What is the No Claim Bonus for 2 consecutive claim-free years?",
+      "bucket": "claims_refunds",
+      "difficulty": "medium",
+      "precision_at_1": 1,
+      "recall_at_5": 1.0,
+      "mrr": 1.0,
+      "ground_truth_count": 2,
+      "first_correct_rank": 1
+    },
+    {
+      "query_id": "q3",
+      "query": "Are add-on covers available with third party only policy?",
+      "bucket": "addons",
+      "difficulty": "medium",
+      "precision_at_1": 0,
+      "recall_at_5": 1.0,
+      "mrr": 0.5,
+      "ground_truth_count": 1,
+      "first_correct_rank": 2
+    },
+    {
+      "query_id": "q4",
+      "query": "Can a vehicle registered as a private car but used for occasional paid carpooling be insured under a standard private car policy?",
+      "bucket": "eligibility",
+      "difficulty": "hard",
+      "precision_at_1": 0,
+      "recall_at_5": 1.0,
+      "mrr": 0.5,
+      "ground_truth_count": 1,
+      "first_correct_rank": 2
+    },
+    {
+      "query_id": "q5",
+      "query": "If a vehicle suffers engine damage due to water ingress during monsoon but the insured continued to crank the engine, is the loss payable under own damage cover?",
+      "bucket": "coverage",
+      "difficulty": "hard",
+      "precision_at_1": 1,
+      "recall_at_5": 1.0,
+      "mrr": 1.0,
+      "ground_truth_count": 1,
+      "first_correct_rank": 1
+    },
+    {
+      "query_id": "q6",
+      "query": "Are depreciation charges on replaced rubber/nylon/plastic parts covered if the vehicle is insured with a zero depreciation add-on but the claim is for malicious damage?",
+      "bucket": "exclusions",
+      "difficulty": "hard",
+      "precision_at_1": 1,
+      "recall_at_5": 1.0,
+      "mrr": 1.0,
+      "ground_truth_count": 1,
+      "first_correct_rank": 1
+    },
+    {
+      "query_id": "q9",
+      "query": "In case of constructive total loss where the repair estimate is 76% of IDV, is the insured entitled to full IDV or repair cost minus deductible?",
+      "bucket": "claims_refunds",
+      "difficulty": "hard",
+      "precision_at_1": 1,
+      "recall_at_5": 1.0,
+      "mrr": 1.0,
+      "ground_truth_count": 3,
+      "first_correct_rank": 1
+    },
+    {
+      "query_id": "q10",
+      "query": "If the insured dies after filing a claim but before settlement, can the legal heir claim the salvage value separately from the total loss payout?",
+      "bucket": "claims_refunds",
+      "difficulty": "hard",
+      "precision_at_1": 0,
+      "recall_at_5": 1.0,
+      "mrr": 0.3333333333333333,
+      "ground_truth_count": 2,
+      "first_correct_rank": 3
+    }
+  ],
+  "worst_queries": [
+    "q10",
+    "q3",
+    "q4"
+  ]
+}
