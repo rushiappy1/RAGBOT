@@ -6,6 +6,16 @@ from pathlib import Path
 import requests
 import re
 from scripts.reranker import ChunkReranker
+from scripts.query_rewriter import expand_abbreviations
+
+
+import warnings
+warnings.filterwarnings('ignore', message='CUDA initialization')
+
+# Or completely hide GPU from torch
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
 
 from config.synthesis_config import (
     HYBRID_SEARCH_DEFAULTS,
@@ -90,13 +100,28 @@ def hybrid_search(query, top_k=None, bm25_weight=None, vector_weight=None):
     
     combined_scores.sort(key=lambda x: x["score"], reverse=True)
     return combined_scores[:top_k]
+def convert_table_to_text(chunk_text):
+    """Convert Markdown table to plain text"""
+    lines = chunk_text.split('\n')
+    result = []
+    
+    for line in lines:
+        if line.startswith('|') and line.endswith('|'):
+            # Table row
+            cells = [c.strip() for c in line.split('|')[1:-1]]  # Remove outer pipes
+            if cells and not all(c.startswith('-') for c in cells):  # Skip separator
+                result.append(' → '.join(cells))  # Join cells with arrow
+        else:
+            result.append(line)
+    
+    return '\n'.join(result)
 
 
 def build_llm_prompt(query, retrieved_chunks):
     """Build prompt from locked template"""
     context = "\n\n".join([
-        f"SOURCE {i+1}: [{chunk['doc_id']} | {chunk['chunk_id']}]\n{chunk['text']}"
-        for i, chunk in enumerate(retrieved_chunks)
+    f"SOURCE {i+1}: [{chunk['doc_id']} | {chunk['chunk_id']}]\n{convert_table_to_text(chunk['text'])}"
+    for i, chunk in enumerate(retrieved_chunks)
     ])
     return SYSTEM_PROMPT_TEMPLATE.format(context=context, query=query)
 
@@ -173,25 +198,21 @@ def validate_answer(ans, retrieved_chunks):
 reranker = ChunkReranker()
 
 def synthesize_answer(query, debug=False, use_reranker=True):
-    """End-to-end with optional reranking"""
-    # ... existing retrieval code ...
+    """End-to-end with query expansion"""
     
-    retrieved = hybrid_search(query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
+    # Expand abbreviations
+    expanded_query = expand_abbreviations(query)
     
-    # Rerank top-10 → top-5
-    if use_reranker:
-        top_chunks = reranker.rerank(query, retrieved, top_k=5)
-        if debug:
-            print("\n✓ Reranked with cross-encoder\n")
-    else:
-        top_chunks = retrieved[:5]
-    """End-to-end with validation"""
+    if debug:
+        print(f"Original query: {query}")
+        print(f"Expanded query: {expanded_query}\n")
+    
     print(f"\n{'='*80}")
-    print(f"QUERY: {query}")
+    print(f"QUERY: {expanded_query}")  # Use expanded query in display
     print(f"{'='*80}\n")
     
-    # Retrieve top-10 with BM25-heavy weighting
-    retrieved = hybrid_search(query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
+    # Retrieve with expanded query
+    retrieved = hybrid_search(expanded_query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
     
     if debug:
         print("TOP 10 RETRIEVED CHUNKS:")
