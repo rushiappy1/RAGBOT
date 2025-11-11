@@ -1,173 +1,63 @@
 {
   "summary": {
-    "P@1": 0.0,
-    "MRR": 0.0,
-    "R@5": 0.0,
-    "Answer_Accuracy": 0.4,
+    "P@1": 0,
+    "MRR": 0,
+    "R@5": 0,
+    "Answer_Accuracy": 0,
     "Total_Queries": 10,
-    "Successful": 10,
-    "Failed": 0
+    "Successful": 0,
+    "Failed": 10
   },
   "details": [
     {
       "id": "ncb_2_years",
       "query": "What is the No Claim Bonus for 2 consecutive claim-free years?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 1,
-      "retrieved": [
-        "SBI_General_Motor::SBI_General_Motor::chunk-44",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-14",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-33",
-        "ICICI_Lombard_Motor::ICICI_Lombard_Motor::chunk-41",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-168"
-      ],
-      "answer": "25%\nSources: [Reliance_General_Motor | Reliance_General_Motor::chunk-33], [SBI_General_Motor | SBI_G..."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "ncb_5_years",
       "query": "What is the NCB for 5 consecutive claim-free years?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 1,
-      "retrieved": [
-        "ICICI_Lombard_Motor::ICICI_Lombard_Motor::chunk-41",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-33",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-34",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-35",
-        "SBI_General_Motor::SBI_General_Motor::chunk-49"
-      ],
-      "answer": "50%\nSources: [ICICI_Lombard_Motor | ICICI_Lombard_Motor::chunk-41], [Reliance_General_Motor | Relian..."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "personal_accident_cover",
       "query": "What is covered under Personal Accident Cover?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 0,
-      "retrieved": [
-        "SBI_General_Motor::SBI_General_Motor::chunk-177",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-2",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-43",
-        "SBI_General_Motor::SBI_General_Motor::chunk-176",
-        "SBI_General_Motor::SBI_General_Motor::chunk-213"
-      ],
-      "answer": "Not found in provided excerpts...."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "policy_transfer",
       "query": "Can I transfer my insurance policy if I sell the vehicle?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 0,
-      "retrieved": [
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-14",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-5",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-15",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-8",
-        "ICICI_Lombard_Motor::ICICI_Lombard_Motor::chunk-46"
-      ],
-      "answer": "Not found in provided excerpts. (validation rejected response)..."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "depreciation_rubber",
       "query": "What is the depreciation rate for rubber parts?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 1,
-      "retrieved": [
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-2",
-        "ICICI_Lombard_Motor::ICICI_Lombard_Motor::chunk-5",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-3",
-        "Bajaj_Allianz_Motor::Bajaj_Allianz_Motor::chunk-3",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-21"
-      ],
-      "answer": "50%\nSources: [Reliance_General_Motor | Reliance_General_Motor::chunk-2], [ICICI_Lombard_Motor | ICIC..."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "cooling_off_period",
       "query": "What is the cooling-off period for cancellation?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 1,
-      "retrieved": [
-        "SBI_General_Motor::SBI_General_Motor::chunk-177",
-        "SBI_General_Motor::SBI_General_Motor::chunk-176",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-59",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-69",
-        "Bajaj_Allianz_Motor::Bajaj_Allianz_Motor::chunk-20"
-      ],
-      "answer": "Not found in provided excerpts...."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "idv_calculation",
       "query": "How is IDV calculated for a vehicle?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 0,
-      "retrieved": [
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-26",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-6",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-7",
-        "SBI_General_Motor::SBI_General_Motor::chunk-28",
-        "ICICI_Lombard_Motor::ICICI_Lombard_Motor::chunk-404"
-      ],
-      "answer": "Not found in provided excerpts...."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "third_party_liability",
       "query": "What is the third party liability coverage limit?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 0,
-      "retrieved": [
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-1",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-49",
-        "SBI_General_Motor::SBI_General_Motor::chunk-283",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-2",
-        "SBI_General_Motor::SBI_General_Motor::chunk-284"
-      ],
-      "answer": "Not found in provided excerpts...."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "claim_settlement_time",
       "query": "What is the time limit to file a claim after an accident?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 0,
-      "retrieved": [
-        "Bajaj_Allianz_Motor::Bajaj_Allianz_Motor::chunk-18",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-8",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-265",
-        "ICICI_Lombard_Motor::ICICI_Lombard_Motor::chunk-366",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-258"
-      ],
-      "answer": "Not found in provided excerpts...."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     },
     {
       "id": "ncb_retention_90_days",
       "query": "How long can I retain my NCB without renewing?",
-      "p1": 0,
-      "rr": 0,
-      "r5": 0,
-      "answer_correct": 0,
-      "retrieved": [
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-14",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-34",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-15",
-        "HDFC_ERGO_Motor::HDFC_ERGO_Motor::chunk-5",
-        "Reliance_General_Motor::Reliance_General_Motor::chunk-35"
-      ],
-      "answer": "Not found in provided excerpts...."
+      "error": "Cannot connect to llama-server on port 8080. Is it running?"
     }
   ]
 }
