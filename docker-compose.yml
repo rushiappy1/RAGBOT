@@ -1,19 +1,19 @@
-version: "3.9"
+version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
-    container_name: ragbank-postgres
+    image: ankane/pgvector:latest  # PostgreSQL with pgvector extension pre-installed
+    container_name: rag-postgres
     environment:
-      POSTGRES_USER: rag
-      POSTGRES_PASSWORD: ragpwd
-      POSTGRES_DB: ragdb
+      POSTGRES_DB: rag_db
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: rag_password
     ports:
       - "5432:5432"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Auto-run schema on first start
+    restart: unless-stopped
 
 volumes:
-  pgdata:
-
+  postgres_data:
