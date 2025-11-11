@@ -45,7 +45,7 @@ chunks = index_data["chunks"]
 
 # Load embedding model
 print("Loading sentence transformer model...")
-model = SentenceTransformer(MODEL_NAME)
+model = SentenceTransformer(MODEL_NAME, device="cpu")
 
 # Connect to database
 print("Connecting to PostgreSQL...")

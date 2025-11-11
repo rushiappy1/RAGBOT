@@ -42,3 +42,6 @@ models/
 scripts/llama.cpp/
 *.gguf
 build/
+models/
+scripts/llama.cpp/
+*.gguf
