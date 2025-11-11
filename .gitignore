@@ -38,3 +38,7 @@ data/chunk_metadata.json
 
 # Logs
 *.log
+models/
+scripts/llama.cpp/
+*.gguf
+build/
