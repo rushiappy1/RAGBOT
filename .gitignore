@@ -1,47 +1,25 @@
-# Virtual environments
-.RAGBOT/
-venv/
-env/
-ENV/
-*.venv
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-*.so
+*.log
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Virtual environments
+.RAGBOT/
+.venv/
+env/
+venv/
 
-# OS
+# Build artifacts
+scripts/llama.cpp/build/
+scripts/llama.cpp/bin/
+
+# Models
+models/*.gguf
+models/*.pt
+models/*.onnx
+
+# OS files
 .DS_Store
 Thumbs.db
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Model cache (sentence-transformers downloads)
-~/.cache/
-.cache/
-
-# Large binary artifacts (regenerate as needed)
-data/bm25_index.pkl
-data/faiss_index.bin
-data/chunk_metadata.json
-
-# Logs
-*.log
-models/
-scripts/llama.cpp/
-*.gguf
-build/
-models/
-scripts/llama.cpp/
-*.gguf

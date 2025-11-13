@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple QA UI</title>
+</head>
+<body>
+    <h1>Insurance Q&A</h1>
+    <input type="text" id="question" placeholder="Ask a question" style="width: 400px;">
+    <button onclick="sendQuestion()">Send</button>
+    <div id="output" style="margin-top:20px;"></div>
+
+    <script>
+    async function sendQuestion() {
+        const question = document.getElementById('question').value;
+        if (!question) return;
+        addMessage("You", question);
+        document.getElementById('question').value = '';
+
+        try {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({question}),
+            });
+            const data = await response.json();
+            if (data.error) {
+                addMessage("Error", data.error);
+            } else {
+                addMessage("Assistant", data.answer || JSON.stringify(data));
+            }
+        } catch (err) {
+            addMessage("Error", err.message);
+        }
+    }
+
+    function addMessage(sender, text) {
+        const out = document.getElementById('output');
+        const p = document.createElement('p');
+        p.innerHTML = `<b>${sender}:</b> ${text}`;
+        out.appendChild(p);
+        out.scrollTop = out.scrollHeight;
+    }
+    </script>
+</body>
+</html>

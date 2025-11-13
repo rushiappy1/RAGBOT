@@ -5,17 +5,13 @@ import os
 from pathlib import Path
 import requests
 import re
-from scripts.reranker import ChunkReranker
-from scripts.query_rewriter import expand_abbreviations
-
+import time
+from scripts.query_rewriter import rewrite_query
 
 import warnings
 warnings.filterwarnings('ignore', message='CUDA initialization')
 
-# Or completely hide GPU from torch
-import os
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
-
 
 from config.synthesis_config import (
     HYBRID_SEARCH_DEFAULTS,
@@ -25,16 +21,10 @@ from config.synthesis_config import (
     REGENERATION_ON_INVALID_FORMAT
 )
 
-
-
-
-
-
 # Change to repo root
 repo_root = Path(__file__).parent.parent
 os.chdir(repo_root)
 print(f"Working directory: {os.getcwd()}\n")
-
 
 # Database config
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -45,251 +35,186 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "rag_password")
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
+# Global variables for lazy initialization
+_bm25 = None
+_chunks = None
+_model = None
+_conn = None
+_cursor = None
 
-# Load BM25 index
-print("Loading BM25 index...")
-with open("data/bm25_index.pkl", "rb") as f:
-    index_data = pickle.load(f)
-bm25 = index_data["bm25"]
-chunks = index_data["chunks"]
-
-# Load embedding model
-print("Loading sentence transformer model...")
-model = SentenceTransformer(MODEL_NAME, device="cpu")
-
-# Connect to database
-print("Connecting to PostgreSQL...")
-conn = psycopg2.connect(
-    host=DB_HOST, port=DB_PORT, database=DB_NAME,
-    user=DB_USER, password=DB_PASSWORD
-)
-cursor = conn.cursor()
-print("Setup complete.\n")
-
+def _initialize_resources():
+    global _bm25, _chunks, _model, _conn, _cursor
+    
+    if _bm25 is not None:
+        return  # Already initialized
+    
+    print("Loading BM25 index...")
+    with open("data/bm25_index.pkl", "rb") as f:
+        index_data = pickle.load(f)
+    _bm25 = index_data["bm25"]
+    _chunks = index_data["chunks"]
+    
+    print("Loading sentence transformer model...")
+    _model = SentenceTransformer(MODEL_NAME, device="cpu")
+    
+    print("Connecting to PostgreSQL...")
+    _conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, database=DB_NAME,
+        user=DB_USER, password=DB_PASSWORD
+    )
+    _cursor = _conn.cursor()
+    print("Setup complete.\n")
 
 def hybrid_search(query, top_k=None, bm25_weight=None, vector_weight=None):
-    """Hybrid retrieval with config defaults"""
+    _initialize_resources()
+    
     top_k = top_k or HYBRID_SEARCH_DEFAULTS["top_k"]
     bm25_weight = bm25_weight or HYBRID_SEARCH_DEFAULTS["bm25_weight"]
     vector_weight = vector_weight or HYBRID_SEARCH_DEFAULTS["vector_weight"]
-    """Hybrid retrieval with keyword-heavy weighting"""
+
     tokenized_query = query.lower().split()
-    bm25_scores = bm25.get_scores(tokenized_query)
+    bm25_scores = _bm25.get_scores(tokenized_query)
     bm25_scores = (bm25_scores - bm25_scores.min()) / (bm25_scores.max() - bm25_scores.min() + 1e-8)
-    
-    q_emb = model.encode([query], normalize_embeddings=True)[0].tolist()
-    cursor.execute("""
+
+    q_emb = _model.encode([query], normalize_embeddings=True)[0].tolist()
+    _cursor.execute("""
         SELECT c.chunk_id, c.doc_id, 1 - (ce.embedding <=> %s::vector) as similarity
         FROM chunk_embeddings ce
         JOIN chunks c ON c.chunk_id = ce.chunk_id
     """, (q_emb,))
-    vector_results = {row[0]: (row[1], row[2]) for row in cursor.fetchall()}
-    
+    vector_results = {row[0]: (row[1], row[2]) for row in _cursor.fetchall()}
+
     combined_scores = []
-    for i, chunk in enumerate(chunks):
+    for i, chunk in enumerate(_chunks):
         chunk_id = chunk["chunk_id"]
         vec_score = vector_results.get(chunk_id, (None, 0.0))[1]
         hybrid_score = (bm25_weight * bm25_scores[i]) + (vector_weight * vec_score)
-        
+
         combined_scores.append({
             "chunk_id": chunk_id,
             "doc_id": chunk["doc_id"],
             "text": chunk["text"],
             "score": hybrid_score
         })
-    
+
     combined_scores.sort(key=lambda x: x["score"], reverse=True)
     return combined_scores[:top_k]
+
 def convert_table_to_text(chunk_text):
-    """Convert Markdown table to plain text"""
     lines = chunk_text.split('\n')
     result = []
-    
+
     for line in lines:
         if line.startswith('|') and line.endswith('|'):
-            # Table row
-            cells = [c.strip() for c in line.split('|')[1:-1]]  # Remove outer pipes
-            if cells and not all(c.startswith('-') for c in cells):  # Skip separator
-                result.append(' → '.join(cells))  # Join cells with arrow
+            cells = [c.strip() for c in line.split('|')[1:-1]]
+            if cells and not all(c.startswith('-') for c in cells):
+                result.append(' → '.join(cells))
         else:
             result.append(line)
-    
+
     return '\n'.join(result)
 
-
 def build_llm_prompt(query, retrieved_chunks):
-    """Build prompt from locked template"""
     context = "\n\n".join([
-    f"SOURCE {i+1}: [{chunk['doc_id']} | {chunk['chunk_id']}]\n{convert_table_to_text(chunk['text'])}"
-    for i, chunk in enumerate(retrieved_chunks)
+        f"SOURCE {i+1}: [{chunk['doc_id']} | {chunk['chunk_id']}]\n{convert_table_to_text(chunk['text'])}"
+        for i, chunk in enumerate(retrieved_chunks)
     ])
     return SYSTEM_PROMPT_TEMPLATE.format(context=context, query=query)
 
-
 def call_llm(prompt, temperature=0.0, max_tokens=160):
-    """Call llama-server with strict parameters"""
-    
-    formatted_prompt = f"""<|im_start|>system
-You are an expert insurance policy analyst.<|im_end|>
-<|im_start|>user
-{prompt}<|im_end|>
-<|im_start|>assistant
-"""
-    
-    try:
-        response = requests.post(
-            "http://localhost:8080/completion",
-            json={
-                "prompt": formatted_prompt,
-                "n_predict": max_tokens,
-                "temperature": temperature,
-                "stop": ["<|im_end|>", "<|im_start|>"]
-            },
-            timeout=120
-        )
-        response.raise_for_status()
-    except requests.exceptions.ConnectionError:
-        raise RuntimeError("Cannot connect to llama-server on port 8080. Is it running?")
-    except requests.exceptions.Timeout:
-        raise RuntimeError("llama-server request timed out (>120s)")
-    except requests.exceptions.HTTPError as e:
-        raise RuntimeError(f"llama-server HTTP error: {e}")
-    
-    result = response.json()
-    return result["content"].strip()
-
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                "http://localhost:8080/completion",
+                json={
+                    "prompt": prompt,
+                    "n_predict": max_tokens,
+                    "temperature": temperature,
+                    "stop": ["<|im_end|>", "<|im_start|>"]
+                },
+                timeout=180
+            )
+            response.raise_for_status()
+            try:
+                result = response.json()
+                content = result.get("content") or result.get("choices", [{}])[0].get("text", "")
+                return content.strip() if content else "Not found in provided excerpts."
+            except Exception as e:
+                print(f"[LLM ERROR] Invalid response: {e}")
+                print(response.text)
+                return "Not found in provided excerpts." 
+            
+        except requests.exceptions.RequestException as e:
+            print(f"LLM request attempt {attempt+1} failed: {e}")
+            time.sleep(5)
+    raise RuntimeError("Failed to call llama-server after 3 attempts.")
 
 def extract_answer_from_response(resp_text):
-    """Parse structured Answer: ... Sources: ... format"""
-    # Try exact format first
     m = re.search(r"Answer:\s*(.+?)\s*\n\s*Sources:\s*(.+)", resp_text, flags=re.S)
     if not m:
-        # Fallback: check if answer contains "Not found"
         if "not found" in resp_text.lower():
             return None, []
-        # Otherwise invalid format
         return None, None
-    
+
     ans = m.group(1).strip()
     sources_raw = m.group(2).strip()
     sources = [s.strip() for s in re.split(r"[,\n]+", sources_raw) if s.strip() and '[' in s]
     return ans, sources
 
-
 def validate_answer(ans, retrieved_chunks):
-    """Verify answer appears verbatim in at least one chunk"""
     if ans is None:
         return False
-    
-    # Check if answer substring exists in any chunk
+
     for ch in retrieved_chunks:
         if ans in ch['text']:
             return True
-    
-    # More lenient: check if key numeric/phrase is present
-    # e.g., "25%" should match "25%"
+
     ans_normalized = ans.lower().replace(" ", "")
     for ch in retrieved_chunks:
         ch_normalized = ch['text'].lower().replace(" ", "")
         if ans_normalized in ch_normalized:
             return True
-    
+
     return False
-reranker = ChunkReranker()
 
 def synthesize_answer(query, debug=False, use_reranker=True):
-    """End-to-end with query expansion"""
+    _initialize_resources()
     
-    # Expand abbreviations
-    expanded_query = expand_abbreviations(query)
-    
+    expanded_query = rewrite_query(query)
     if debug:
         print(f"Original query: {query}")
-        print(f"Expanded query: {expanded_query}\n")
-    
-    print(f"\n{'='*80}")
-    print(f"QUERY: {expanded_query}")  # Use expanded query in display
-    print(f"{'='*80}\n")
-    
-    # Retrieve with expanded query
-    retrieved = hybrid_search(expanded_query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
-    
-    if debug:
-        print("TOP 10 RETRIEVED CHUNKS:")
-        for i, chunk in enumerate(retrieved, 1):
-            print(f"\n[{i}] {chunk['doc_id']} | {chunk['chunk_id']} (score: {chunk['score']:.3f})")
-            # Check if NCB data is present
-            if "25%" in chunk['text']:
-                print("  ✓ Contains '25%'")
-            if "2 consecutive" in chunk['text'].lower() or "2 years" in chunk['text'].lower():
-                print("  ✓ Contains '2 consecutive/years'")
-            print(f"Text: {chunk['text'][:200]}...\n")
-    else:
-        print(f"Retrieved {len(retrieved)} chunks from:")
-        for chunk in retrieved[:5]:
-            print(f"  - {chunk['doc_id']}")
-    
-    # Use top-5 for synthesis (context window constraint)
-    top_chunks = retrieved[:5]
-    
-    # Build prompt
-    prompt = build_llm_prompt(query, top_chunks)
-    
-    if debug:
-        print(f"\n{'='*80}")
-        print("PROMPT (first 1000 chars):")
-        print(f"{'='*80}")
-        print(prompt[:1000])
-        print("...")
-        print(f"{'='*80}\n")
-    
-    # Generate
-    print("\nGenerating answer with llama-server...")
-    response_text = call_llm(prompt, temperature=0.0, max_tokens=160)
-    
-    if debug:
-        print(f"\nRaw LLM response:\n{response_text}\n")
-    
-    # Extract and validate
-    ans, sources = extract_answer_from_response(response_text)
-    
-    if ans is None and sources is None:
-        # Invalid format - regenerate with stricter directive
-        print("⚠️  Invalid format, regenerating with stricter prompt...")
-        regen_prompt = prompt + "\n\nEXTRA: The previous response did not follow format. You MUST respond with:\nAnswer: <exact text>\nSources: [doc_id | chunk_id]\nor:\nNot found in provided excerpts."
-        response_text = call_llm(regen_prompt, temperature=0.0, max_tokens=160)
-        ans, sources = extract_answer_from_response(response_text)
-    
-    # Validate answer is grounded
-    if ans and validate_answer(ans, top_chunks):
-        final = f"{ans}\nSources: {', '.join(sources) if sources else 'None cited'}"
-    elif ans is None and sources == []:
-        # "Not found" response
-        final = "Not found in provided excerpts."
-    else:
-        # Hallucination detected
-        print("⚠️  Validation failed: answer not found verbatim in chunks")
-        final = "Not found in provided excerpts. (validation rejected response)"
-    
-    print(f"\n{'='*80}")
-    print("FINAL ANSWER:")
-    print(f"{'='*80}")
-    print(final)
-    print(f"{'='*80}\n")
-    
-    return {
-        "query": query,
-        "retrieved_chunks": [{"chunk_id": c["chunk_id"], "doc_id": c["doc_id"]} for c in top_chunks],
-        "answer": final,
-        "raw_response": response_text
-    }
+        print(f"Expanded query: {expanded_query}")
 
+    retrieved = hybrid_search(expanded_query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
+    if not any("25%" in c["text"] for c in retrieved):
+        if debug:
+            print("No match after rewrite, falling back to raw query.")
+        retrieved = hybrid_search(query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
+
+    top_chunks = retrieved[:5]
+    prompt = build_llm_prompt(query, top_chunks)
+    response_text = call_llm(prompt)
+
+    ans, sources = extract_answer_from_response(response_text)
+    return {"answer": ans, "retrieved_chunks": top_chunks, "sources": sources}
+
+def retrieval_debug(query):
+    _initialize_resources()
+    top_chunks = hybrid_search(query, top_k=10, bm25_weight=0.7, vector_weight=0.3)
+    print(f"Top {len(top_chunks)} chunks for query: {query}\n")
+    for i, chunk in enumerate(top_chunks, 1):
+        print(f"[{i}] doc_id: {chunk['doc_id']} | chunk_id: {chunk['chunk_id']} | score: {chunk['score']:.4f}")
+        print(f"Text snippet: {chunk['text'][:200]}...\n")
+        if "25%" in chunk['text']:
+            print(" --> Contains '25%' indicator\n")
+        if "2 consecutive" in chunk['text'].lower() or "2 years" in chunk['text'].lower():
+            print(" --> Contains '2 consecutive/years' indicator\n")
 
 if __name__ == "__main__":
-    # Test with debug mode to see retrieval details
     test_query = "What is the No Claim Bonus for 2 consecutive claim-free years?"
-    
     result = synthesize_answer(test_query, debug=True)
     
-    cursor.close()
-    conn.close()
+    if _cursor:
+        _cursor.close()
+    if _conn:
+        _conn.close()
