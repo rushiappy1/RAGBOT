@@ -16,7 +16,7 @@ class IngestHandler(FileSystemEventHandler):
         ext = Path(path).suffix.lower()
 
         if ext == ".pdf":
-            print(f"\n🆕 [{datetime.now().strftime('%H:%M:%S')}] New PDF detected: {path}")
+            print(f"\n [{datetime.now().strftime('%H:%M:%S')}] New PDF detected: {path}")
             try:
                 print("→ PDF → Markdown pipeline...")
                 subprocess.run(["python", "scripts/pdf_to_markdown.py", path], check=True)
@@ -30,7 +30,7 @@ class IngestHandler(FileSystemEventHandler):
                 print("→ Rebuilding BM25 index...")
                 subprocess.run(["python", "scripts/build_bm25_index.py"], check=True)
 
-                print(f"✅ Auto-ingestion complete for {path}\n")
+                print(f" Auto-ingestion complete for {path}\n")
             except subprocess.CalledProcessError as e:
                 print(f"❌ Auto-ingestion failed: {e}")
 
