@@ -35,9 +35,9 @@ class ChangeHandler(FileSystemEventHandler):
                 print("→ Rebuilding BM25 index...")
                 subprocess.run(["python", "scripts/build_bm25_index.py"], check=True)
 
-                print(f"✅ Update complete for {path}\n")
+                print(f"Update complete for {path}\n")
             except subprocess.CalledProcessError as e:
-                print(f"❌ Error during update: {e}")
+                print(f"Error during update: {e}")
 
 def start_watcher():
     observer = Observer()
@@ -45,7 +45,7 @@ def start_watcher():
     for d in WATCH_DIRS:
         Path(d).mkdir(parents=True, exist_ok=True)
         observer.schedule(handler, d, recursive=True)
-        print(f"👀 Watching {d}")
+        print(f"Watching {d}")
     observer.start()
 
     try:
