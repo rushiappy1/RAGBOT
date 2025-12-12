@@ -38,5 +38,5 @@ output_path.parent.mkdir(parents=True, exist_ok=True)
 with open(output_path, "wb") as f:
     pickle.dump(index_data, f)
 
-print(f"✅ BM25 index saved to {output_path}")
+print(f"BM25 index saved to {output_path}")
 print(f"   Corpus size: {len(all_chunks)} chunks")
