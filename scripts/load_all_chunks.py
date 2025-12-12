@@ -15,9 +15,9 @@ try:
         host=DB_HOST, port=DB_PORT, database=DB_NAME, 
         user=DB_USER, password=DB_PASSWORD
     )
-    print(f"✅ Connected to {DB_NAME}@{DB_HOST}")
+    print(f"Connected to {DB_NAME}@{DB_HOST}")
 except Exception as e:
-    print(f"❌ Connection failed: {e}")
+    print(f"Connection failed: {e}")
     exit(1)
 
 cursor = conn.cursor()
@@ -41,7 +41,7 @@ for chunk_file in chunk_files:
             chunk["approx_tokens"]
         ))
     
-    print(f"📄 {doc_name}: {len(chunks_data)} chunks")
+    print(f"{doc_name}: {len(chunks_data)} chunks")
     
     try:
         execute_values(
@@ -53,21 +53,21 @@ for chunk_file in chunk_files:
         conn.commit()
         total_loaded += len(chunks_data)
     except Exception as e:
-        print(f"   ❌ Error: {e}")
+        print(f"Error: {e}")
         conn.rollback()
 
-print(f"\n✅ Total loaded: {total_loaded} chunks")
+print(f"\n Total loaded: {total_loaded} chunks")
 
 # Verify
 cursor.execute("SELECT doc_id, COUNT(*) FROM chunks GROUP BY doc_id ORDER BY doc_id;")
 results = cursor.fetchall()
-print("\n�� Chunks per insurer:")
+print("\n Chunks per insurer:")
 for doc_id, count in results:
     print(f"   {doc_id}: {count}")
 
 cursor.execute("SELECT COUNT(*) FROM chunks;")
 total = cursor.fetchone()[0]
-print(f"\n✅ Total chunks in DB: {total}")
+print(f"\n Total chunks in DB: {total}")
 
 cursor.close()
 conn.close()
