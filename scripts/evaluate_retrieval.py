@@ -89,7 +89,7 @@ for q in eval_data["queries"]:
 with open("data/eval_results_v0.json", "w") as f:
     json.dump(results, f, indent=2)
 
-print("✅ Evaluation results saved to data/eval_results_v0.json")
+print("Evaluation results saved to data/eval_results_v0.json")
 print("Next: Manually annotate ground truth chunk IDs in eval_queries_v0.json")
 
 cursor.close()
