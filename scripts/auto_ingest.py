@@ -32,7 +32,7 @@ class IngestHandler(FileSystemEventHandler):
 
                 print(f" Auto-ingestion complete for {path}\n")
             except subprocess.CalledProcessError as e:
-                print(f"❌ Auto-ingestion failed: {e}")
+                print(f" Auto-ingestion failed: {e}")
 
 def start_ingest_watcher():
     Path(INGEST_DIR).mkdir(parents=True, exist_ok=True)
