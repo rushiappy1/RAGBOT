@@ -29,7 +29,7 @@ rows = cursor.fetchall()
 print(f"Found {len(rows)} chunks to embed\n")
 
 if len(rows) == 0:
-    print("✅ All chunks already embedded")
+    print(" All chunks already embedded")
     cursor.close()
     conn.close()
     exit(0)
@@ -58,7 +58,7 @@ execute_values(
     page_size=100
 )
 conn.commit()
-print(f"✅ Inserted {len(embed_data)} embeddings")
+print(f"Inserted {len(embed_data)} embeddings")
 
 # Verify by doc_id
 cursor.execute("""
@@ -69,13 +69,13 @@ cursor.execute("""
     ORDER BY c.doc_id
 """)
 results = cursor.fetchall()
-print("\n📊 Embeddings per insurer:")
+print("\n Embeddings per insurer:")
 for doc_id, count in results:
     print(f"   {doc_id}: {count}")
 
 cursor.execute("SELECT COUNT(*) FROM chunk_embeddings;")
 total = cursor.fetchone()[0]
-print(f"\n✅ Total embeddings in DB: {total}")
+print(f"\n Total embeddings in DB: {total}")
 
 cursor.close()
 conn.close()
