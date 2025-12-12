@@ -39,7 +39,7 @@ def start_ingest_watcher():
     observer = Observer()
     observer.schedule(IngestHandler(), INGEST_DIR, recursive=False)
     observer.start()
-    print(f"👀 Watching {INGEST_DIR} for new PDFs")
+    print(f" Watching {INGEST_DIR} for new PDFs")
 
     try:
         while True:
