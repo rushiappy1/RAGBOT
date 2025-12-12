@@ -68,7 +68,7 @@ avg_precision_at_1 = sum(metrics["precision_at_1"]) / len(metrics["precision_at_
 avg_recall_at_5 = sum(metrics["recall_at_5"]) / len(metrics["recall_at_5"])
 avg_mrr = sum(metrics["mrr"]) / len(metrics["mrr"])
 
-print("📊 AGGREGATE METRICS")
+print("AGGREGATE METRICS")
 print("-" * 80)
 print(f"Precision@1: {avg_precision_at_1:.3f} ({sum(metrics['precision_at_1'])}/{len(metrics['precision_at_1'])} queries)")
 print(f"Recall@5:    {avg_recall_at_5:.3f}")
@@ -76,10 +76,10 @@ print(f"MRR:         {avg_mrr:.3f}")
 print()
 
 # Per-query breakdown
-print("📋 PER-QUERY BREAKDOWN")
+print("PER-QUERY BREAKDOWN")
 print("-" * 80)
 for r in per_query_results:
-    status = "✅" if r["precision_at_1"] == 1 else "❌"
+    status = "Right" if r["precision_at_1"] == 1 else "Wrong"
     print(f"{status} {r['query_id']} [{r['bucket']}] [{r['difficulty']}]")
     print(f"   P@1: {r['precision_at_1']} | R@5: {r['recall_at_5']:.2f} | MRR: {r['mrr']:.3f} | First hit: {r['first_correct_rank']}")
     print(f"   {r['query'][:80]}...")
@@ -87,7 +87,7 @@ for r in per_query_results:
 
 # Identify worst performers
 worst_queries = sorted(per_query_results, key=lambda x: x["mrr"])[:3]
-print("🔴 WORST PERFORMING QUERIES (Lowest MRR)")
+print(" WORST PERFORMING QUERIES (Lowest MRR)")
 print("-" * 80)
 for r in worst_queries:
     print(f"{r['query_id']}: {r['query'][:80]}...")
@@ -108,4 +108,4 @@ eval_summary = {
 with open("data/eval_scores.json", "w") as f:
     json.dump(eval_summary, f, indent=2)
 
-print("✅ Evaluation scores saved to data/eval_scores.json")
+print("Evaluation scores saved to data/eval_scores.json")
