@@ -1,273 +1,186 @@
-# README.md
+RAG-based Insurance Policy Q&A System
+Status: Production-ready
+Architecture: Docker microservices
+LLM: Qwen2.5-7B (via llama.cpp, GPU-accelerated)
 
+A high‑precision Retrieval‑Augmented Generation (RAG) system for answering insurance policy questions from raw PDF documents. It uses Hybrid Retrieval (BM25 + vector search) and a Strict Extractive Synthesis protocol to drive hallucinations effectively to zero.
 
-## Project Overview
+⚡ Quick Start (Docker / Production Setup)
+Prerequisites
+Docker & Docker Compose
 
-RAG-based insurance policy Q&A system using hybrid retrieval (BM25 + vector search) with strict extractive answer synthesis. The system is designed to provide zero-hallucination responses by enforcing that all answers must be verbatim from retrieved document chunks.
+NVIDIA drivers + NVIDIA Container Toolkit (for GPU acceleration)
 
-**Key Technology Stack:**
-- **LLM**: Qwen2.5-7B-Instruct Q6_K (5.9GB) via llama.cpp server
-- **Embeddings**: sentence-transformers/all-MiniLM-L6-v2 (384-dim)
-- **Database**: PostgreSQL with pgvector extension
-- **Retrieval**: Hybrid search (BM25 0.7 + Vector 0.3)
-- **Backend**: FastAPI (port 8000)
-- **UI**: Streamlit (port 8501) or Flask (ui_simple)
+1. Clone & Setup
+bash
+git clone <repo_url>
+cd rag-insurance-bot
+2. Launch the Stack
+This single command starts:
 
-## Common Development Commands
+Llama.cpp inference server (Qwen2.5-7B)
 
-### Starting the System
+FastAPI backend
 
-**Full system with all components:**
-```bash
-python run_full_system.py
-```
-This orchestrates: llama-server (8080) → FastAPI (8000) → embedding watcher → auto-ingestion → Streamlit UI (8501)
+Streamlit UI
 
-**UI only (assumes backend already running):**
-```bash
-python run_full_ui.py
-```
+PostgreSQL (with pgvector)
 
-**Manual component startup:**
-```bash
-# 1. Start llama-server (adjust -ngl for GPU layers)
-cd scripts/llama.cpp
-./build/bin/llama-server -m /path/to/models/Qwen2.5-7B-Instruct-Q6_K.gguf -ngl 10 --port 8080
+Redis
 
-# 2. Start FastAPI backend
-uvicorn api.server:app --host 0.0.0.0 --port 8000 --reload
+Ingestion worker
 
-# 3. Start Streamlit UI
-streamlit run ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
-```
+bash
+docker-compose up -d --build
+3. Access Services
+User Interface (Streamlit):
+http://localhost:8501
 
-**Using the convenience script:**
-```bash
-./start_ragbot.sh
-```
-Note: Hardcoded model path; update before use.
+Backend API Docs (FastAPI / OpenAPI):
+http://localhost:8000/docs
 
-### Database Setup
+LLM Server (llama.cpp):
+http://localhost:8080
 
-**Start PostgreSQL with pgvector:**
-```bash
-docker-compose up -d
-```
-Creates `rag_db` with schema from `init.sql`. Default credentials: `rag_user:rag_password@localhost:5432/rag_db`
+4. Stop the System
+bash
+docker-compose down
+🏗 System Architecture
+The system is deployed as a small cluster of containers:
 
-### Document Ingestion Pipeline
+Service	Container	Description	Port
+Inference	ai_engine	Llama.cpp server (Qwen2.5-7B, GPU)	8080
+Backend API	ai_backend	FastAPI app (retrieval + orchestration)	8000
+Frontend	ai_frontend	Streamlit chat interface	8501
+Database	rag_db	PostgreSQL + pgvector extension	5432
+Cache / Queue	redis	Redis for session state / lightweight queue	6379
+Ingest Worker	ai_ingest	Watches PDFs, runs chunking + embedding	—
+Data Flow (High-Level)
+text
+graph LR
+    PDF[PDF Upload / Drop-In] -->|Watch| Ingest[Ingestion Worker]
+    Ingest -->|Chunking + Embedding| PG[(Postgres + pgvector + BM25)]
+    User[User Query] -->|HTTP| Backend[FastAPI Backend]
+    Backend -->|Hybrid Search| PG
+    Backend -->|Context + Question| LLM[Llama.cpp / Qwen2.5-7B]
+    LLM -->|Strict Extractive Answer| Backend
+    Backend -->|JSON Response| UI[Streamlit Chat UI]
+🛠 Manual Setup (Local Dev / Debug)
+Use this path only if you’re debugging individual Python scripts or developing outside Docker.
 
-**Full ingestion (PDF → Markdown → Chunks → Embeddings → BM25):**
-```bash
-# 1. Convert PDFs to markdown with semantic chunking
-python scripts/pdf2md_and_semantic_chunks.py
+Prerequisites
+Python 3.10+
 
-# 2. Load chunks into PostgreSQL
-python scripts/load_all_chunks.py
+Local PostgreSQL
 
-# 3. Generate embeddings and store in DB
-python scripts/embed_all_chunks.py
+cmake and build toolchain (for llama.cpp)
 
-# 4. Build BM25 index
-python scripts/build_bm25_index.py
-```
+(Optional) CUDA for GPU build
 
-**Auto-ingestion (watches `data/new_uploads/` for new PDFs):**
-```bash
-python scripts/auto_ingest.py
-```
-Triggers full pipeline automatically when new PDFs are added.
-
-**Embedding watcher (watches `data/markdown/` and `data/chunks/`):**
-```bash
-python scripts/embedding_watcher.py
-```
-
-### Testing & Evaluation
-
-**Run evaluation on golden dataset:**
-```bash
-python scripts/eval_run.py
-```
-Computes P@1, MRR, R@5, and answer accuracy against `data/eval_queries.json`. Results saved to `eval/eval_results.json`.
-
-**Test hybrid retrieval interactively:**
-```bash
-python scripts/hybrid_retrieval.py
-```
-
-**Test retrieval evaluation:**
-```bash
-python scripts/evaluate_retrieval.py
-```
-
-**Test query rewriting:**
-```bash
-python scripts/query_rewriter.py
-```
-
-### Building llama.cpp
-
-If `llama.cpp` is not built:
-```bash
-cd scripts/llama.cpp  # or llama.cpp/
-mkdir -p build && cd build
-cmake ..
-cmake --build .
-```
-Binary will be at `llama.cpp/build/bin/llama-server`.
-
-## High-Level Architecture
-
-### Core Components
-
-**1. Document Processing Pipeline**
-- `scripts/pdf2md_and_semantic_chunks.py`: Converts PDFs to markdown, then applies semantic chunking with sentence-transformer-based similarity boundaries. Chunks are 150-900 tokens with 60-token overlap.
-- Output: `data/markdown/*.md` and `data/chunks/*.jsonl`
-
-**2. Retrieval System**
-- **BM25 Index**: Pickled in `data/bm25_index.pkl` (contains tokenized corpus)
-- **Vector Store**: PostgreSQL `chunk_embeddings` table with pgvector cosine similarity index
-- **Hybrid Search**: `scripts/answer_synthesis.py:hybrid_search()` combines BM25 and vector scores with configurable weights (default: 0.7 BM25, 0.3 vector)
-
-**3. Answer Synthesis**
-- `scripts/answer_synthesis.py:synthesize_answer()`: Main orchestration function
-  1. Query rewriting (expand abbreviations like "NCB" → "No Claim Bonus")
-  2. Hybrid retrieval (top-10 chunks)
-  3. Select top-5 for LLM context
-  4. Call llama-server with strict extractive prompt
-  5. Validate answer is verbatim from retrieved chunks
-
-**4. Configuration**
-- `config/synthesis_config.py`: **DO NOT MODIFY** without running evals
-  - Contains locked Week 2 settings proven to eliminate hallucinations
-  - Defines `SYSTEM_PROMPT_TEMPLATE` enforcing extractive-only responses
-
-**5. API Layer**
-- `api/server.py`: FastAPI with single `/ask` endpoint
-  - Accepts `{"question": "..."}` JSON
-  - Returns `{"query", "answer", "sources": ["doc_id::chunk_id", ...]}`
-
-**6. User Interfaces**
-- `ui/streamlit_app.py`: Chat interface with message history
-- `ui_simple/`: Flask alternative with templates/static files
-
-### Data Flow
-
-```
-PDF → pymupdf4llm → Markdown → Semantic Chunker → PostgreSQL (chunks table)
-                                                 ↓
-                                         sentence-transformers → PostgreSQL (chunk_embeddings)
-                                                 ↓
-User Query → Query Rewriter → Hybrid Search (BM25 + Vector) → Top-5 Chunks
-                                                 ↓
-                           Build Context → LLM (llama-server) → Extract Answer
-                                                 ↓
-                                    Validate (substring check) → Return to User
-```
-
-### Critical Design Decisions
-
-**Zero-Hallucination Strategy:**
-1. Strict system prompt forbids external knowledge
-2. Post-generation validation: answer must be substring of retrieved chunks (with normalization)
-3. Format enforcement: `Answer: <text>\nSources: [doc|chunk], ...`
-4. If answer not found, return "Not found in provided excerpts."
-
-**Chunking Strategy:**
-- Semantic boundaries detected via sentence embedding cosine similarity (threshold: 0.38)
-- Hard token cap: 900 tokens (immediate flush)
-- Soft target: 450 tokens with 60-token overlap
-- Preserves markdown heading lineage for context
-
-**Retrieval Tuning:**
-- BM25 weight 0.7 (term-based recall for specific policy details)
-- Vector weight 0.3 (semantic generalization)
-- Top-10 retrieval, top-5 for synthesis (reduces context noise)
-
-## Important File Locations
-
-**Configuration:**
-- `config/synthesis_config.py` - Locked synthesis parameters
-- `docker-compose.yml` - PostgreSQL setup
-- `init.sql` - Database schema
-
-**Core Scripts:**
-- `scripts/answer_synthesis.py` - Main synthesis logic
-- `scripts/hybrid_retrieval.py` - Standalone retrieval tester
-- `scripts/pdf2md_and_semantic_chunks.py` - Document ingestion
-- `scripts/query_rewriter.py` - Query expansion
-- `scripts/reranker.py` - Cross-encoder reranking (optional)
-
-**Data:**
-- `data/chunks/*.jsonl` - Chunked documents (doc_id, chunk_id, text, approx_tokens)
-- `data/bm25_index.pkl` - BM25 index + chunk metadata
-- `data/eval_queries.json` - Golden evaluation dataset
-
-**Orchestration:**
-- `run_full_system.py` - Full stack startup
-- `run_full_ui.py` - UI-only startup
-- `start_ragbot.sh` - Bash convenience script
-
-## Environment Setup
-
-**Python Environment:**
-```bash
+1. Environment
+bash
 python -m venv .RAGBOT
-source .RAGBOT/bin/activate  # Linux/Mac
-```
+source .RAGBOT/bin/activate
+pip install -r requirements.txt
+2. Database (Dev)
+bash
+# Only DB via docker-compose (dev override)
+docker-compose -f docker-compose.dev.yml up -d db
+3. Services (Three Terminals)
+Tab 1 – Llama Server
 
-**Environment Variables (optional):**
-- `DB_HOST` (default: localhost)
-- `DB_PORT` (default: 5432)
-- `DB_NAME` (default: rag_db)
-- `DB_USER` (default: rag_user)
-- `DB_PASSWORD` (default: rag_password)
+bash
+cd scripts/llama.cpp
+./build/bin/llama-server \
+  -m /models/Qwen2.5-7B-Instruct-Q6_K.gguf \
+  -ngl 33 \
+  --port 8080
+Tab 2 – Backend API
 
-## Development Workflow
+bash
+uvicorn api.server:app --host 0.0.0.0 --port 8000 --reload
+Tab 3 – Frontend
 
-### Adding New Documents
+bash
+streamlit run ui/streamlit_app.py --server.port 8501
+Note: run_full_system.py is deprecated in favor of Docker Compose.
 
-1. Place PDF in `data/new_uploads/` (if auto-ingest running) OR `data/policies/`
-2. If manual: run full ingestion pipeline (see commands above)
-3. Verify chunks in PostgreSQL: `SELECT COUNT(*) FROM chunks;`
+Key Technical Design
+Zero-Hallucination Strategy
+Strict System Prompt
 
-### Modifying Retrieval
+The LLM is instructed to:
 
-1. Edit weights in `scripts/answer_synthesis.py:synthesize_answer()` call to `hybrid_search()`
-2. Test with `python scripts/hybrid_retrieval.py`
-3. Run eval: `python scripts/eval_run.py`
-4. If metrics improve, update `config/synthesis_config.py:HYBRID_SEARCH_DEFAULTS`
+Use only retrieved excerpts.
 
-### Modifying Synthesis Prompt
+Copy answers verbatim from context.
 
-**WARNING:** Changes to `config/synthesis_config.py:SYSTEM_PROMPT_TEMPLATE` can reintroduce hallucinations.
+Respond with:
 
-1. Edit prompt template
-2. Run eval: `python scripts/eval_run.py`
-3. Manually inspect `eval/eval_results.json` for hallucinations
-4. Only commit if answer accuracy >= previous baseline
+Answer: <text>
 
-### Testing Changes
+Sources: [doc_id | chunk_id], [...]
 
-1. Start llama-server: `cd scripts/llama.cpp && ./build/bin/llama-server -m <model> --port 8080`
-2. Run eval: `python scripts/eval_run.py`
-3. Check metrics in console output and `eval/eval_results.json`
+If the answer is not explicitly present, it must return:
+"Not found in provided excerpts."
 
-## Known Issues
+Post-Generation Validation
 
-- `run_full_system.py` hardcodes model path (line 82) - update before use
-- `embedding_watcher.py` references non-existent `scripts/pdf_to_markdown.py` and `scripts/semantic_chunker.py` (should use `pdf2md_and_semantic_chunks.py`)
-- `auto_ingest.py` also references non-existent scripts
-- llama.cpp submodule may need recursive clone if missing
-- GPU layers (`-ngl`) need tuning based on VRAM (RTX 3060 = 10 layers works)
+After the LLM responds, the backend:
 
- Milestone
+Checks whether the predicted answer text is a substring (normalized) of at least one retrieved chunk.
 
-The system achieved zero-hallucination status with:
-- Query: "What is the No Claim Bonus for 2 consecutive claim-free years?"
-- Answer: 25%
-- Sources: [Reliance_General_Motor | chunk-33], [SBI_General_Motor | chunk-44]
-- Validation: ✅ Passed
+If not, the answer is rejected and replaced with "Not found in provided excerpts."
 
-See `docs/week2_summary.md` for details.
+Fallback
+
+Prefer no answer over hallucinated answer in a regulated domain.
+
+Retrieval Tuning (Week 2 “Locked” Settings)
+Hybrid Retrieval: BM25 + vector similarity
+
+bm25_weight = 0.7 – prioritize exact term matches (e.g., “Section 4.1”, “NCB”, “IDV”).
+
+vector_weight = 0.3 – capture semantic similarity and paraphrases.
+
+Reranking:
+
+Top‑10 chunks from hybrid retrieval.
+
+Optional cross‑encoder reranker narrows to Top‑5 chunks for the LLM context window.
+
+ Project Structure
+text
+├── api/                  # FastAPI application (RAG orchestration, /ask endpoint)
+├── config/               # System constants & config
+│   └── synthesis_config.py  # Strict RAG + LLM settings (locked)
+├── data/                 # Data volumes (mapped in Docker)
+│   ├── chunks/           # JSONL semantic chunks
+│   ├── models/           # GGUF model files (Qwen, etc.)
+│   └── policies/         # Raw PDF policies
+├── scripts/              # ETL, ingestion, and utilities
+│   ├── auto_ingest.py    # Watchdog: new PDFs → pipeline
+│   ├── pdf2md_and_semantic_chunks.py  # PDF → Markdown → semantic chunks
+│   ├── embed_all_chunks.py            # Chunk embedding generator
+│   ├── hybrid_retrieval.py            # Retrieval debugging / inspection
+│   ├── eval_run.py       # Evaluation suite (golden dataset)
+│   └── llama.cpp/        # Llama.cpp (inference engine submodule)
+├── ui/                   # Streamlit chatbot frontend
+├── docker-compose.yml    # Production orchestration (all services)
+└── Dockerfile.*          # Individual service images
+Testing & Evaluation
+Golden Dataset Evaluation
+Run inside the backend container or local virtualenv:
+
+bash
+python scripts/eval_run.py
+This writes metrics such as P@1, MRR, and hallucination rate to:
+
+text
+eval/eval_results.json
+Retrieval-Only Testing
+To debug or tune the retriever:
+
+bash
+python scripts/hybrid_retrieval.py
+This allows inspection of the top‑k retrieved chunks and their hybrid scores for sample queries.
