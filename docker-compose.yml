@@ -1,19 +1,96 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: ankane/pgvector:latest  # PostgreSQL with pgvector extension pre-installed
-    container_name: rag-postgres
-    environment:
-      POSTGRES_DB: rag_db
-      POSTGRES_USER: rag_user
-      POSTGRES_PASSWORD: rag_password
-    ports:
-      - "5432:5432"
+ 
+  # 1. Llama.cpp Server (GPU Optimized)
+  # ----------------------------------------------------------------
+  llama-server:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: ai_engine
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Auto-run schema on first start
-    restart: unless-stopped
+      - ./models:/models  # Mount your local models folder
+    # Command arguments for the server
+    command: -m /models/Qwen2.5-7B-Instruct-Q6_K.gguf -ngl 33 --port 8080 --host 0.0.0.0 --ctx-size 8192
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  postgres_data:
+  
+  # 2. THE BRAIN: FastAPI Backend
+  # ----------------------------------------------------------------
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: ai_backend
+    restart: always
+    depends_on:
+      llama-server:
+        condition: service_healthy
+    environment:
+      - LLAMA_HOST=http://llama-server:8080
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8000:8000"
+
+
+  # 3.  Streamlit UI
+  # ----------------------------------------------------------------
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: ai_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://backend:8000
+
+
+  # 4.Background Workers
+  # ----------------------------------------------------------------
+  ingest_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ai_ingest
+    command: python scripts/auto_ingest.py
+    restart: always
+    volumes:
+      - ./data:/data
+    environment:
+      - WATCH_DIR=/data
+
+  embedding_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ai_embedder
+    command: python scripts/embedding_watcher.py
+    restart: always
+    # FORCE CPU for Embeddings to save VRAM for Llama
+    environment:
+      - CUDA_VISIBLE_DEVICES=
+      - LLAMA_HOST=http://llama-server:8080
+
+
+  # 5. THE UTILITIES
+  # ----------------------------------------------------------------
+  redis:
+    image: redis:alpine
+    restart: always
