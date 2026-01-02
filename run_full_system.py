@@ -1,146 +1,103 @@
-import subprocess
-import time
+import psycopg2
+from psycopg2.extras import execute_values
+from sentence_transformers import SentenceTransformer
 import os
-import sys
-import signal
-import socket
-import requests
+import torch
 
-def start_process(command, cwd=None):
-    # Start process in a new session for easier group termination
-    return subprocess.Popen(
-        command,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        preexec_fn=os.setsid,
-        cwd=cwd,
-        text=True  # capture output as strings
+# --- CONFIGURATION ---
+# 1. Update to the "Finance Grade" Model
+MODEL_NAME = "BAAI/bge-m3" 
+BATCH_SIZE = 64  # Process 64 chunks at a time (Safe for 16GB VRAM)
+
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+DB_NAME = os.getenv("DB_NAME", "rag_db")
+DB_USER = os.getenv("DB_USER", "rag_user")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "rag_password")
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, database=DB_NAME,
+        user=DB_USER, password=DB_PASSWORD
     )
 
-def wait_for_tcp(host, port, timeout=60, name="service"):
-    start = time.time()
-    while time.time() - start < timeout:
-        try:
-            with socket.create_connection((host, port), timeout=2):
-                print(f"{name} is reachable on {host}:{port}")
-                return True
-        except OSError:
-            time.sleep(1)
-    print(f"Timeout waiting for {name} on {host}:{port}")
-    return False
-
-def wait_for_http(url, timeout=60, name="service"):
-    start = time.time()
-    while time.time() - start < timeout:
-        try:
-            r = requests.get(url, timeout=2)
-            if r.status_code < 500:
-                print(f"{name} HTTP ready at {url}")
-                return True
-        except requests.RequestException:
-            pass
-        time.sleep(1)
-    print(f"Timeout waiting for {name} HTTP at {url}")
-    return False
-
-def build_llama_cpp():
-    print("Building llama.cpp with CMake...")
-    repo_path = "./llama.cpp"
-    try:
-        subprocess.check_call("mkdir -p build", shell=True, cwd=repo_path)
-        subprocess.check_call("cmake ..", shell=True, cwd=os.path.join(repo_path, "build"))
-        subprocess.check_call("cmake --build .", shell=True, cwd=os.path.join(repo_path, "build"))
-        print("llama.cpp built successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error building llama.cpp: {e}")
-        sys.exit(1)
-
-def tail_proc(prefix, proc, max_lines=20):
-    # Print last lines of stdout/stderr if a process fails to become healthy
-    try:
-        out, err = proc.communicate(timeout=0.2)
-    except Exception:
-        out, err = "", ""
-    out_lines = [l for l in out.splitlines() if l.strip()][-max_lines:]
-    err_lines = [l for l in err.splitlines() if l.strip()][-max_lines:]
-    if out_lines:
-        print(f"\n[{prefix}] stdout (tail):")
-        for l in out_lines:
-            print(l)
-    if err_lines:
-        print(f"\n[{prefix}] stderr (tail):")
-        for l in err_lines:
-            print(l)
-
 def main():
-    # Build llama.cpp
-    build_llama_cpp()
+  
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f" Running on: {device.upper()}")
 
-    # Commands and ports
-    llama_server_path = "./llama.cpp/bin/llama-server"
-    model_path = "/media/rishikesh/Rishi/RAGBOT/rag-banking/models/Qwen2.5-7B-Instruct-Q6_K.gguf"
 
-    llama_cmd = f'{llama_server_path} -m "{model_path}" -ngl 5 --port 8080'
-    backend_cmd = "uvicorn api.server:app --host 0.0.0.0 --port 8000"
-    embedding_watcher_cmd = "python scripts/embedding_watcher.py"
-    auto_ingest_cmd = "python scripts/auto_ingest.py"
-    # Streamlit must bind to all interfaces and fixed port
-    streamlit_cmd = "streamlit run ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0"
+    print(f" Loading Model: {MODEL_NAME}...")
+    model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
+    
+    if device == "cuda":
+        model.half()
+        print("Model loaded in FP16 mode")
 
-    # Start llama-server
-    print("Starting llama-server...")
-    llama_proc = start_process(llama_cmd)
-    if not wait_for_tcp("127.0.0.1", 8080, timeout=90, name="llama-server"):
-        tail_proc("llama-server", llama_proc)
-        print("Exiting due to llama-server not ready.")
-        os.killpg(os.getpgid(llama_proc.pid), signal.SIGTERM)
-        sys.exit(1)
-
-    # Start FastAPI backend (on port 8000)
-    print("Starting FastAPI backend...")
-    backend_proc = start_process(backend_cmd)
-    if not wait_for_tcp("127.0.0.1", 8000, timeout=60, name="backend"):
-        tail_proc("backend", backend_proc)
-        print("Exiting due to backend not ready.")
-        os.killpg(os.getpgid(backend_proc.pid), signal.SIGTERM)
-        os.killpg(os.getpgid(llama_proc.pid), signal.SIGTERM)
-        sys.exit(1)
-
-    # Start embedding watcher
-    print("Starting embedding watcher...")
-    embed_proc = start_process(embedding_watcher_cmd)
-    time.sleep(2)
-
-    # Start auto-ingestion pipeline
-    print("Starting auto-ingestion pipeline...")
-    ingest_proc = start_process(auto_ingest_cmd)
-    time.sleep(2)
-
-    # Start Streamlit UI
-    print("Starting Streamlit UI...")
-    streamlit_proc = start_process(streamlit_cmd)
-    # Wait for Streamlit to open HTTP (8501). It serves a root page.
-    if not wait_for_http("http://127.0.0.1:8501/", timeout=60, name="Streamlit"):
-        tail_proc("streamlit", streamlit_proc)
-        print("Continuing even if Streamlit not confirmed; check logs.")
-
-    print("All services started.")
-    print("Endpoints:")
-    print(" - Llama.cpp UI:   http://127.0.0.1:8080")
-    print(" - FastAPI /ask:   http://127.0.0.1:8000/ask")
-    print(" - Streamlit UI:   http://127.0.0.1:8501")
-    print("Press Ctrl+C to stop everything.")
+    conn = get_db_connection()
+    # Use a named cursor for server-side streaming (Zero RAM bloat)
+    cursor = conn.cursor(name="chunk_stream_cursor") 
 
     try:
+      
+        print(" Fetching chunks needing embeddings...")
+        cursor.execute("""
+            SELECT c.id, c.chunk_id, c.text 
+            FROM chunks c
+            LEFT JOIN chunk_embeddings ce ON c.chunk_id = ce.chunk_id
+            WHERE ce.id IS NULL
+        """)
+
+        total_processed = 0
+        
         while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("Terminating all subprocesses...")
-        for proc in [streamlit_proc, ingest_proc, embed_proc, backend_proc, llama_proc]:
-            if proc and proc.poll() is None:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        sys.exit(0)
+           
+            rows = cursor.fetchmany(BATCH_SIZE)
+            if not rows:
+                break
+
+            # Unpack batch
+            # chunk_uuids -> For inserting
+            # texts -> For embedding
+            chunk_uuids = [row[1] for row in rows]
+            texts = [row[2] for row in rows]
+
+            #  Generate Embeddings
+            # normalize_embeddings=True is CRITICAL for Cosine Similarity
+            embeddings = model.encode(
+                texts, 
+                batch_size=BATCH_SIZE, 
+                normalize_embeddings=True, 
+                show_progress_bar=False,
+                convert_to_numpy=True
+            )
+
+            #  Prepare Insert Data
+            insert_data = [
+                (uuid, emb.tolist()) 
+                for uuid, emb in zip(chunk_uuids, embeddings)
+            ]
+
+            #  Insert & Commit immediately (Save progress!)
+            # We use a separate cursor for writes because the read cursor is active
+            with conn.cursor() as write_cursor:
+                execute_values(
+                    write_cursor,
+                    "INSERT INTO chunk_embeddings (chunk_id, embedding) VALUES %s ON CONFLICT (chunk_id) DO NOTHING",
+                    insert_data
+                )
+                conn.commit() # <--- Saves data after every batch
+
+            total_processed += len(rows)
+            print(f" Processed {total_processed} chunks...", end="\r")
+
+    except Exception as e:
+        print(f"\n CRITICAL ERROR: {e}")
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+        print(f"\n  Job Complete. Total Embedded: {total_processed}")
 
 if __name__ == "__main__":
     main()
